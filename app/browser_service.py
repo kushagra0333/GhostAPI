@@ -2,6 +2,7 @@ import asyncio
 import time
 import traceback
 from playwright.async_api import async_playwright, Browser, BrowserContext, Page
+from playwright_stealth import stealth_async
 from app.config import config
 from app.models import GenerateRequest, GenerateResponse, TaskStatus, FailureReason
 from app.logger import logger
@@ -47,11 +48,27 @@ class BrowserService:
         
         try:
             self.playwright = await async_playwright().start()
+            
+            # Browser launch arguments for stealth
+            args = [
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-infobars",
+                "--window-position=0,0",
+                "--ignore-certifcate-errors",
+                "--ignore-certifcate-errors-spki-list",
+                "--disable-accelerated-2d-canvas",
+                "--no-zygote",
+                "--no-first-run",
+                "--disable-dev-shm-usage",
+            ]
+
             self.browser = await self.playwright.chromium.launch(
                 # If you comment this and uncomment this you will be able to see the browser in action
                 #headless=False, 
                 headless=config.BROWSER_HEADLESS,
-                args=["--disable-blink-features=AutomationControlled"]
+                args=args
             )
             
             self.context = await self.browser.new_context(
@@ -59,7 +76,9 @@ class BrowserService:
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
             )
             
+            # Apply stealth
             self.page = await self.context.new_page()
+            await stealth_async(self.page)
             
             # 1. Navigation
             logger.info("Navigating to ChatGPT", extra={"request_id": self.request_id})

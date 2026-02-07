@@ -1,5 +1,5 @@
-# Use official Python runtime as a parent image
-FROM python:3.12-slim-bookworm
+# Use official Playwright image which has Python and browsers
+FROM mcr.microsoft.com/playwright/python:v1.41.0-jammy
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -9,7 +9,7 @@ ENV PYTHONUNBUFFERED=1 \
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies required for Playwright
+# Install system dependencies (Playwright image has most, but we might need some extras)
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
@@ -22,9 +22,13 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt
 
-# Install Playwright browsers and dependencies
-RUN playwright install chromium && \
-    playwright install-deps chromium
+# Playwright browsers are already installed in this image, 
+# but we need to ensuring our specific version matches or is compatible.
+# The base image comes with browsers for its playwright version.
+# We'll run install just in case the requirement version differs slightly
+RUN playwright install chromium
+# RUN playwright install-deps chromium # Not needed, base image has them
+
 
 # Copy application code
 COPY . .
