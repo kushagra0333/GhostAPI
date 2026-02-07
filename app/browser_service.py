@@ -139,17 +139,35 @@ class BrowserService:
             # 2. Input Prompt
             logger.info(f"Entering prompt into {prompt_area}", extra={"request_id": self.request_id})
             try:
-                 await prompt_area.fill(request.prompt)
+                await prompt_area.fill(request.prompt)
             except:
-                 # If fill fails (e.g. contenteditable div), try type
-                 await prompt_area.click()
-                 await self.page.keyboard.type(request.prompt)
+                # If fill fails (e.g. contenteditable div), try type
+                await prompt_area.click()
+                await self.page.keyboard.type(request.prompt)
+            
+            await asyncio.sleep(0.5)
 
-            # Click send button
-            send_button = self.page.locator("button[data-testid='send-button']")
-            if await send_button.is_visible():
-                await send_button.click()
-            else:
+            # Click send button - Try multiple selectors
+            send_clicked = False
+            send_selectors = [
+                "button[data-testid='send-button']", 
+                "button[aria-label='Send prompt']",
+                "button:has-text('Send')"
+            ]
+            
+            for selector in send_selectors:
+                try:
+                    btn = self.page.locator(selector).last
+                    if await btn.is_visible() and await btn.is_enabled():
+                        logger.info(f"Clicking send button: {selector}", extra={"request_id": self.request_id})
+                        await btn.click()
+                        send_clicked = True
+                        break
+                except:
+                    pass
+            
+            if not send_clicked:
+                logger.info("Send button not found or enabled, pressing Enter", extra={"request_id": self.request_id})
                 await self.page.keyboard.press("Enter")
 
             # 3. Setup Observer
@@ -160,22 +178,39 @@ class BrowserService:
             logger.info("Waiting for generation to start", extra={"request_id": self.request_id})
             start_wait = time.time()
 
-
             generation_started = False
             
             while time.time() - start_wait < config.TIMEOUT_GENERATION_START:
-                # logger.info("Checking for assistant message...")
+                # Check for "Sign up to chat" modal or similar blockage
+                try:
+                    if await self.page.locator("div", has_text="Sign up to chat").is_visible():
+                         logger.error("Blocked by 'Sign up to chat' modal", extra={"request_id": self.request_id})
+                         await self._take_screenshot("signup_modal")
+                         return self._failure_response(FailureReason.FAIL_UI_CHANGE, "Blocked by 'Sign up to chat' modal")
+                except:
+                    pass
+
                 # Try to find assistant message
                 try:
-                    # locators = self.page.locator('[data-message-author-role="assistant"]')
+                    # locators = self.page.locator('[data-message-author-role="assistant"]') # old selector
+                    # OpenAI often changes classes. .markdown is usually safe but might pick up user message?
+                    # User message usually has .whitespace-pre-wrap
+                    
                     locators = self.page.locator('.markdown')
                     count = await locators.count()
+                    
                     if count > 0:
                         # logger.info(f"Found {count} markdown elements")
+                        # We need to make sure it's not the user's prompt (which might be markdown rendered too?)
+                        # But honestly, `on_chunk` will handle text updates.
+                        # If we attach to the last one, it's likely the new response.
+                        
                         last_msg = locators.last
-                        element_handle = await last_msg.element_handle()
-                        if element_handle:
-                             await self.observer.attach(element_handle)
+                        # Check if it has content (streaming might start empty)
+                        if await last_msg.is_visible():
+                             element_handle = await last_msg.element_handle()
+                             if element_handle:
+                                  await self.observer.attach(element_handle)
                 except Exception as e:
                     pass
 
