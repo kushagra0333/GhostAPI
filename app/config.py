@@ -6,8 +6,8 @@ class Config:
     PORT = 8000
     
     # Browser Automation Configuration
-    MAX_CONCURRENT_BROWSERS = 2
-    BROWSER_HEADLESS = True  # Set to True for production/background running
+    MAX_CONCURRENT_BROWSERS = int(os.getenv("MAX_CONCURRENT_BROWSERS", "2"))
+    BROWSER_HEADLESS = os.getenv("BROWSER_HEADLESS", "True").lower() == "true"  # Set to True for production/background running
     
     # Timeouts (in seconds)
     TIMEOUT_GLOBAL_HARD_LIMIT = 300  # 5 minutes

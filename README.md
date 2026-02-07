@@ -17,12 +17,14 @@ A FastAPI-based service that automates interactions with ChatGPT using Playwrigh
 ## Setup
 
 1.  **Clone the repository**:
+
     ```bash
     git clone <repository_url>
     cd ai_api
     ```
 
 2.  **Create a virtual environment**:
+
     ```bash
     python3 -m venv venv
     source venv/bin/activate
@@ -39,25 +41,29 @@ A FastAPI-based service that automates interactions with ChatGPT using Playwrigh
 You can deploy the service using Docker:
 
 1.  **Build the Docker image**:
+
     ```bash
     docker build -t ai-api .
     ```
 
 2.  **Run the container**:
+
     ```bash
     docker run -d -p 8000:8000 --name ai-api-container ai-api
     ```
-    
+
     The API will be available at `http://localhost:8000`.
 
 ## Usage
 
 1.  **Start the server**:
+
     ```bash
     uvicorn app.main:app --host 0.0.0.0 --port 8000
     ```
 
 2.  **Send a request**:
+
     ```bash
     curl -X POST "http://localhost:8000/generate" \
          -H "Content-Type: application/json" \
@@ -69,6 +75,7 @@ You can deploy the service using Docker:
 ## Configuration
 
 Configuration is managed in `app/config.py`. Key settings include:
+
 - `MAX_CONCURRENT_BROWSERS`: Number of parallel browser instances.
 - `BROWSER_HEADLESS`: Run browsers in headless mode (default: False for debugging).
 - `TIMEOUT_GENERATION_START`: Time to wait for generation to begin.
@@ -77,3 +84,21 @@ Configuration is managed in `app/config.py`. Key settings include:
 
 - **Logs**: Check `server.log` (if redirected) or console output for detailed execution logs.
 - **Screenshots/Snapshots**: On failure, artifacts are saved to `logs/screenshots` and `logs/html`.
+
+## Deploy on Render
+
+1.  **Create a New Web Service**:
+    - Go to [Render Dashboard](https://dashboard.render.com/).
+    - Click **New +** -> **Web Service**.
+2.  **Connect Repository**:
+    - Build and deploy from a Git repository.
+    - Connect your GitHub account and select this repository.
+3.  **Configure**:
+    - **Runtime**: Select `Docker`.
+    - **Instance Type**: Select `Free` (or higher).
+    - **Environment Variables**:
+      - `MAX_CONCURRENT_BROWSERS`: Set to `1` or `2` depending on plan memory (Chromium is heavy).
+      - `BROWSER_HEADLESS`: ensure it is `true` (default).
+4.  **Deploy**:
+    - Click **Create Web Service**.
+    - Render will build the Docker image and deploy automatically.
