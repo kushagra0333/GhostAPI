@@ -56,7 +56,7 @@ class BrowserService:
             
             self.context = await self.browser.new_context(
                 viewport={"width": 1280, "height": 720},
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
             )
             
             self.page = await self.context.new_page()
@@ -73,16 +73,44 @@ class BrowserService:
             logger.info("Waiting for input box", extra={"request_id": self.request_id})
             
             prompt_area = None
-            selectors = ["textarea[id='prompt-textarea']", "textarea[data-id='root']", "div[contenteditable='true']"]
+            # Expanded selectors list
+            selectors = [
+                "#prompt-textarea",
+                "textarea[id='prompt-textarea']",
+                "textarea[data-id='root']",
+                "div[contenteditable='true']",
+                "textarea[placeholder='Message ChatGPT…']",
+                "textarea[placeholder='Message ChatGPT']"
+            ]
             
             # Wait a bit for page load
             await asyncio.sleep(2)
 
-            for _ in range(5): # Retry loop
+            for i in range(10): # retry loop (increased)
+                # Check for "Stay logged out"
+                try:
+                    stay_logged_out = self.page.locator("div", has_text="Stay logged out").last
+                    if await stay_logged_out.is_visible():
+                        logger.info("Clicking 'Stay logged out'", extra={"request_id": self.request_id})
+                        await stay_logged_out.click()
+                        await asyncio.sleep(1)
+                except:
+                    pass
+
+                # Check for "Login" landing page - if we see "Log in" and "Sign up" buttons, we might be stuck
+                try:
+                    login_btn = self.page.locator("button", has_text="Log in").first
+                    if await login_btn.is_visible():
+                         logger.warning("Detected 'Log in' button. Might be on landing page.", extra={"request_id": self.request_id})
+                         # Potentially could try to click "Start messaging" or similar if available without login, 
+                         # but usually "Stay logged out" covers it.
+                except:
+                    pass
+
                 for selector in selectors:
                     try:
-                        loc = self.page.locator(selector)
-                        if await loc.count() > 0 and await loc.is_visible():
+                        loc = self.page.locator(selector).first
+                        if await loc.is_visible():
                             prompt_area = loc
                             break
                     except:
@@ -91,24 +119,22 @@ class BrowserService:
                 if prompt_area:
                     break
                 
-                # If not found, check for "Stay logged out"
-                try:
-                    stay_logged_out = self.page.get_by_text("Stay logged out")
-                    if await stay_logged_out.is_visible():
-                        logger.info("Clicking 'Stay logged out'", extra={"request_id": self.request_id})
-                        await stay_logged_out.click()
-                        await asyncio.sleep(1)
-                        continue
-                except:
-                    pass
-                
                 await asyncio.sleep(1)
 
             if not prompt_area:
                 logger.error("Input box not found. Check if blocked or CAPTCHA.", extra={"request_id": self.request_id})
                 await self._take_screenshot("no_input_box")
                 await self._dump_html("no_input_box")
-                return self._failure_response(FailureReason.FAIL_UI_CHANGE, "Input box not found")
+                
+                # Capture debug info
+                page_title = await self.page.title()
+                try:
+                    body_text = await self.page.inner_text("body")
+                    body_snippet = body_text[:500].replace("\n", " ")
+                except:
+                    body_snippet = "Could not get body text"
+
+                return self._failure_response(FailureReason.FAIL_UI_CHANGE, f"Input box not found. Title: {page_title}. Body: {body_snippet}")
 
             # 2. Input Prompt
             logger.info(f"Entering prompt into {prompt_area}", extra={"request_id": self.request_id})
