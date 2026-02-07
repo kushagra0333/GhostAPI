@@ -12,7 +12,7 @@ A FastAPI-based service that automates interactions with ChatGPT using Playwrigh
 
 ## Demo
 
-![Demo Video](./demo.webm)
+![Demo Video](./demo.gif)
 
 ## Setup
 
