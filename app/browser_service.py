@@ -298,5 +298,6 @@ class BrowserService:
             status=TaskStatus.FAILED,
             failure_reason=reason,
             output_text=self.accumulated_text, # Return partial text if any
+            error_message=msg,
             latency_ms=int((time.time() - self.start_time) * 1000)
         )

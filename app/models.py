@@ -24,4 +24,5 @@ class GenerateResponse(BaseModel):
     status: TaskStatus
     output_text: Optional[str] = None
     failure_reason: Optional[FailureReason] = None
+    error_message: Optional[str] = None
     latency_ms: Optional[int] = None
