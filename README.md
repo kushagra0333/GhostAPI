@@ -12,7 +12,7 @@ A FastAPI-based service that automates interactions with ChatGPT using Playwrigh
 
 ## Demo
 
-![Demo Video](./demo.gif)
+![Demo Video](demo.gif)
 
 ## Setup
 
@@ -77,4 +77,3 @@ Configuration is managed in `app/config.py`. Key settings include:
 
 - **Logs**: Check `server.log` (if redirected) or console output for detailed execution logs.
 - **Screenshots/Snapshots**: On failure, artifacts are saved to `logs/screenshots` and `logs/html`.
-# GhostAPI
